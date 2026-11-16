@@ -1,0 +1,48 @@
+# Model setup: Computer Lab Noise Monitoring
+
+Select two **different room instances**, checking their names, numbers, owning model and Revit Comments. The reference uses Computer Lab A 109 (collaborative BIM work) and Computer Lab B 210 (quiet individual BIM work). These roles provide context; the application evaluates only readings and targets.
+
+## Parameter and assignment table
+
+All three custom parameters use **Element context**.
+
+| Parameter | Purpose | Data type | Unit / storage | Template assignment |
+|---|---|---|---|---|
+| Noise Level | Incoming measured value on each connection | Number | Sound Pressure Level ? Decibels ? dB; precision 1; direct numeric dB | OmniClass 23.60.10.00 General Measuring Instruments |
+| Noise Target | Per-room threshold read when evaluating | Number | Same specification/unit/precision; 55.0 for 109 and 50.0 for 210 | OmniClass 13.53 Laboratory Spaces; value saved on room |
+| Noise Status | Stored rule result | Restricted Text | Exact case-sensitive values Normal and High; empty until evaluated | OmniClass 13.53 Laboratory Spaces; written on room |
+
+Save and apply the facility template. Check the actual schema in each owning model: qualified IDs can differ between the default model and the room model. The inspected setup reports numeric type 3, restricted Text type 20 and context `e`. Confirm both numeric parameters report `soundPressureLevel / decibels / dB / precision 1`. Do not choose a generic unitless number or convert dB to another scale.
+
+| Individual connection | Classification | Host | Rooms relationship | Pending source mapping |
+|---|---|---|---|---|
+| Noise_ComputerLabA_109 | 23.60.10.00 | Computer Lab A 109 | Computer Lab A 109 | noise_db ? Noise Level |
+| Noise_ComputerLabB_210 | 23.60.10.00 | Computer Lab B 210 | Computer Lab B 210 | noise_db ? Noise Level |
+
+The final supplied facility already has the template, classifications, room targets and both connections. Both statuses are empty. Both source mappings have since been saved and passed read-only inspection. The earlier mapping samples returned HTTP 404, and a later history read found no retained Noise Level for room-a. Live retention still needs the separate bounded pilot checkpoint. For a new setup, first supply the two new Copy Link destinations privately so authorized initial samples can expose `noise_db`. Never substitute AHU/VAV destinations.
+
+## Private configuration and access
+
+| Private value | Where it belongs / how obtained |
+|---|---|
+| APS_CLIENT_ID and APS_CLIENT_SECRET | This repository's ignored `.env`; an existing APS app, copied from the sibling private file only with owner authorization |
+| TANDEM_LAB_A_URL / TANDEM_LAB_B_URL | Same `.env`; each new noise connection's Individual ingestion Copy Link; contains a secret |
+| facility_urn and region | Ignored `config/project.json`; selected facility and configured region |
+| connection_key | Discovery/export, cross-checked against each new Copy Link |
+| asset.model_urn and element_key | Room's actual owning model and short element key from discovery |
+| parameters.noise_db | Noise Level qualified ID in the default connection model |
+| asset.target_parameter / status_parameter | Noise Target / Noise Status qualified IDs in the room model |
+| asset.number_parameter / comments_parameter | Source Number / Comments IDs in the room schema |
+| Expected names/numbers/Comments and classifications | The actual selected rooms/connections, checked against the intended reference |
+
+APS reads use `data:read`. The later pilot uses `data:read data:write` **and facility Edit access** for that app. Scopes alone do not grant facility access. The latest configured live preflight reports `accessLevel` **Manage**, which permits the later status-writeback stage. An earlier discovery reported Read. If access returns to Read, open **Tandem ? facility ? Users ? Services ? select the existing APS app identified by local APS_CLIENT_ID ? change Read to Edit ? Save**. Read access is enough for the preflight reads accompanying mapping samples; those samples authenticate separately using each secret ingestion URL.
+
+Discovery retrieves model URNs, element/connection keys, source/custom parameter IDs, metadata, properties and saved relationships. It does not choose the intended room, create the template, assign classifications, set targets, issue ingestion secrets or save source mappings. The facility owner makes those selections in Tandem. Names are not unique identifiers; check all relationships and owning models before using discovered keys.
+
+For inventory, save output privately:
+
+```powershell
+.\.venv\Scripts\python.exe -B -m monitoring discover --output outputs/connections-review.json
+```
+
+Use `--model` with an owning model from that inventory for room discovery, optionally `--element` to narrow it. Files are created exclusively; use a new filename. After mapping setup, use the exact inspection command in [LIVE_HANDOFF](LIVE_HANDOFF.md).

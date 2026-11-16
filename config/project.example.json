@@ -1,0 +1,90 @@
+{
+  "schema_version": 2,
+  "example": "Computer Lab Noise Monitoring",
+  "facility_urn": "REPLACE_FACILITY_URN",
+  "region": "US",
+  "measurement_field": "noise_db",
+  "specification": "soundPressureLevel",
+  "unit": "decibels",
+  "symbol": "dB",
+  "precision": 1,
+  "parameter_names": {
+    "measurement": "Noise Level",
+    "target": "Noise Target",
+    "status": "Noise Status"
+  },
+  "classifications": {
+    "connection": "23.60.10.00",
+    "room": "13.53"
+  },
+  "max_history_gap_seconds": 180,
+  "sensors": [
+    {
+      "id": "room-a",
+      "label": "Computer Lab A 109",
+      "expected_connection_name": "Noise_ComputerLabA_109",
+      "ingestion_env": "TANDEM_LAB_A_URL",
+      "connection_key": "REPLACE_CONNECTION_KEY_A",
+      "parameters": {
+        "noise_db": "REPLACE_NOISE_LEVEL_ID"
+      },
+      "asset": {
+        "model_urn": "REPLACE_OWNING_MODEL_URN_A",
+        "element_key": "REPLACE_ROOM_ELEMENT_KEY_A",
+        "expected_name": "Computer Lab A 109",
+        "expected_number": "109",
+        "comments_contains": "Collaborative BIM work",
+        "number_parameter": "REPLACE_ROOM_NUMBER_ID",
+        "comments_parameter": "REPLACE_ROOM_COMMENTS_ID",
+        "target_parameter": "REPLACE_NOISE_TARGET_ID",
+        "status_parameter": "REPLACE_NOISE_STATUS_ID"
+      },
+      "simulation": {
+        "values": [
+          45,
+          66.3,
+          66.5,
+          64.9,
+          43.7,
+          43.4,
+          45,
+          43.8
+        ]
+      }
+    },
+    {
+      "id": "room-b",
+      "label": "Computer Lab B 210",
+      "expected_connection_name": "Noise_ComputerLabB_210",
+      "ingestion_env": "TANDEM_LAB_B_URL",
+      "connection_key": "REPLACE_CONNECTION_KEY_B",
+      "parameters": {
+        "noise_db": "REPLACE_NOISE_LEVEL_ID"
+      },
+      "asset": {
+        "model_urn": "REPLACE_OWNING_MODEL_URN_B",
+        "element_key": "REPLACE_ROOM_ELEMENT_KEY_B",
+        "expected_name": "Computer Lab B 210",
+        "expected_number": "210",
+        "comments_contains": "Individual BIM work",
+        "number_parameter": "REPLACE_ROOM_NUMBER_ID",
+        "comments_parameter": "REPLACE_ROOM_COMMENTS_ID",
+        "target_parameter": "REPLACE_NOISE_TARGET_ID",
+        "status_parameter": "REPLACE_NOISE_STATUS_ID"
+      },
+      "simulation": {
+        "values": [
+          40,
+          45.9,
+          45.7,
+          46.6,
+          45.7,
+          46.2,
+          46.5,
+          46.6
+        ]
+      }
+    }
+  ],
+  "display_timezone": "America/New_York"
+}
