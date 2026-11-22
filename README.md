@@ -6,6 +6,15 @@ The worked example is **Computer Lab Noise Monitoring**. Campus support staff us
 
 This independent community tutorial is general: choose your own monitoring problem, measurement meaning, targets, rule and decision. The supplied lab example teaches separate connections, model properties, verified API data and a human decision. The illustrative targets of 55.0 and 50.0 dB are teaching settings, not prescribed limits. Synthetic readings are not calibrated sound measurements, acoustic averages or exposure estimates.
 
+## Choose a facility
+
+The walkthrough uses Computer Labs 109 and 210 in the VDC Research Center. If you have access to that model, use those labs. Otherwise, follow the same noise-monitoring workflow in a Tandem facility where you can configure the rooms and connections and grant your APS app facility Edit access.
+
+1. Choose two distinct rooms. Create a separate Individual connection for each in the facility's default model, with its room set as both **Host** and the **Rooms** relationship.
+2. Follow [model setup](docs/MODEL_SETUP.md) for classifications and the three custom Element properties. Save the `noise_db` mapping to **Noise Level** on both connections. Set **Noise Target** on each room and configure **Noise Status** to allow exactly `Normal` and `High`.
+3. Copy the [public template](config/project.example.json) to ignored `config/project.json`. Fill in `facility_urn`, `region`, and each sensor's `connection_key`, `expected_connection_name`, `parameters.noise_db`, and `asset` fields for the room's owning model, element, identity and property IDs. Keep the APS credentials and each connection's Copy Link in ignored `.env`, under the names used by the template and each sensor's `ingestion_env`.
+4. Follow [Run locally](#run-locally), then use the [manual demo](#run-the-manual-demo) with your own readings. Start at or below both room targets, go above one target to trigger a status change, then return both readings to or below their targets.
+
 ## Current reference
 
 | Lab | Local configurable ID | Connection | Model Noise Target |
@@ -17,11 +26,11 @@ Three custom **Element** parameters are used: Noise Level, Noise Target and rest
 
 The first readings are `{"noise_db":45.0}` for Lab 109 and `{"noise_db":40.0}` for Lab 210. After Tandem accepts a lab's reading, the app evaluates it against that room's current Tandem target. **High** means the reading is above target. **Normal** includes equality. The app writes Noise Status if the value is empty or changes. Tandem supplies the recorded timestamps for history and evidence.
 
-## Part A — Understand the worked example
+## Understand the worked example
 
-Use the [file map](#public-file-map) to build your short repository table. For your annotated UML sequence diagram, trace one Lab 109 reading from the [Simulator controls](monitoring/simulator_ui.py) through [the controller](monitoring/execution.py) and [the shared workflow](monitoring/workflow.py). Find the connection and mapping checks, the Individual submission, the room target lookup, the [rule](monitoring/rules.py), and the status write. Include the student's later **Refresh** in [Streamlit](app.py) and the [Tandem readback](monitoring/dashboard.py).
+To explore the code, you can sketch a file map or trace a Lab 109 reading from the [Simulator controls](monitoring/simulator_ui.py) through [the controller](monitoring/execution.py) and [the shared workflow](monitoring/workflow.py). An annotated UML sequence diagram can show the connection and mapping checks, the Individual request, the room target lookup, the [rule](monitoring/rules.py), the status write, and the later **Refresh** in [Streamlit](app.py) that reads [Tandem history and room properties](monitoring/dashboard.py).
 
-Use your three brief explanations to cover why each sensor has its own connection and room, how the rule handles equality and uncertain delivery, and how retained readings and stored room status inform the decision to visit. An accepted POST establishes request acceptance. The history response establishes that a reading was retained, and the room property read establishes the stored status.
+An accepted POST establishes request acceptance. The history response establishes that a reading was retained, and the room property read establishes the stored status. Together, the retained readings and room status help staff decide whether to visit.
 
 ## Run locally
 
@@ -31,7 +40,7 @@ Use Python 3.11+ and PowerShell from this repository. Create the local environme
 py -3 scripts/setup_environment.py
 ```
 
-On a fresh checkout, create your private files from the examples:
+If you haven't created your private files yet, copy the examples:
 
 ```powershell
 Copy-Item .env.example .env
@@ -59,7 +68,7 @@ These are synthetic teaching readings. Room-use Comments provide background only
 
 Open the app at **http://localhost:8501** and expand **Simulator** below the room cards.
 
-### Part B — Try your own readings
+### Run the manual demo
 
 Select **Try your own readings**. At each checkpoint, enter the pair below and check **Expected status** as you edit. Use the targets shown in the app if they differ from the example targets.
 
@@ -69,9 +78,9 @@ Select **Try your own readings**. At each checkpoint, enter the pair below and c
 | Round 2 — Trigger a status change | 60.0 dB / High | 50.0 dB / Normal |
 | Round 3 — Return to normal | 43.7 dB / Normal | 45.7 dB / Normal |
 
-Click **Send readings** once per row. Each lab reports acceptance or a send problem, plus the status outcome for accepted readings. When delivery is uncertain, that lab's status is left as it was. Check Tandem readback before deciding whether to send again. Capture both labs at each checkpoint with the [evidence walkthrough](docs/VERIFICATION.md#assignment-evidence-from-tandem-and-streamlit). The single cooldown countdown clears and the button re-enables automatically when ready for the next pair.
+Click **Send readings** once per row. Each lab reports acceptance or a send problem, plus the status outcome for accepted readings. When delivery is uncertain, that lab's status is left as it was. Check Tandem readback before deciding whether to send again. Capture both labs at each checkpoint with the [verification walkthrough](docs/VERIFICATION.md#verify-the-demo-results). The single cooldown countdown clears and the button re-enables automatically when ready for the next pair.
 
-To adapt the example, choose two sensors and hosts, an event and recovery, and a decision someone can make from the results. Use the [configuration template](config/project.example.json) for names, connections, property IDs and scenario values. For a different quantity or unit, update the [configuration validator](monitoring/config.py), [schema checks](monitoring/workflow.py), and the units in the UI and dashboard. Keep your decision rule in [rules.py](monitoring/rules.py). In this example, repeated above-target readings in Lab 109 give staff a reason to check that lab. Recovery means the latest reading returned within target and its room status returned to Normal.
+The app validates one-decimal sound pressure levels in dB and the exact status labels `Normal` and `High`. Changing the measurement type or units requires code changes to the [configuration validator](monitoring/config.py), [schema checks](monitoring/workflow.py), and display. Changing the status labels also requires updating the [rule and status validation](monitoring/rules.py) and the display. In this example, repeated above-target readings in Lab 109 give staff a reason to check that lab. Recovery means the latest reading returned within target and its room status returned to Normal.
 
 ### Run the guided demo
 
@@ -87,9 +96,9 @@ The demo takes at least seven minutes plus request time. It uses the same per-la
 
 Both modes enforce at least 60 real seconds between sends to the same connection, using the saved state in `.state/attempts.json`. In Streamlit, writes start with **Send readings** or **Start demo**. Use [the handoff](docs/LIVE_HANDOFF.md) if a stopped server leaves a stale sender lock.
 
-### Collect assignment evidence
+### Verify the demo results
 
-Capture a fresh Tandem API read and a Streamlit screenshot at each checkpoint. In the guided demo, collect evidence after round 1, after one of rounds 2-4, and after a round from 5-8. Manual sends can demonstrate the same checkpoints using values at or below target, above target and back within target. Follow the [assignment evidence walkthrough](docs/VERIFICATION.md) to match each reading to its connection, check the room's stored status, and explain your decision about a visit.
+Capture a fresh Tandem API read and a Streamlit screenshot at each checkpoint. In the guided demo, collect evidence after round 1, after one of rounds 2-4, and after a round from 5-8. Manual sends can demonstrate the same checkpoints using values at or below target, above target and back within target. Follow the [verification guide](docs/VERIFICATION.md#verify-the-demo-results) to match each reading to its connection, check the room's stored status, and decide whether a visit is warranted.
 
 ## Public file map
 

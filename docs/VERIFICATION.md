@@ -11,11 +11,11 @@ For local repository checks, run from this checkout:
 
 These commands are offline. The test package blocks actual HTTP; all API values/permissions/timestamps in those tests are invented. Streamlit AppTest exercises rendering using fixture-backed readers. No test reads private credentials, sends samples or changes a facility.
 
-## Assignment evidence from Tandem and Streamlit
+## Verify the demo results
 
-Use the same facility and connections throughout the run. Start with [model setup](MODEL_SETUP.md). Three [manual sends](../README.md#part-b--try-your-own-readings) are sufficient. The [guided demo](../README.md#run-the-guided-demo) is the eight-round worked example.
+Use the same facility and connections throughout the run. Start with [model setup](MODEL_SETUP.md). Three [manual sends](../README.md#run-the-manual-demo) are sufficient. The [guided demo](../README.md#run-the-guided-demo) is the eight-round worked example.
 
-For manual evidence, label each readback and screenshot with its Canvas round:
+For the manual demo, label each readback and screenshot with its round:
 
 - Round 1 — Normal readings
 - Round 2 — Trigger a status change
@@ -36,6 +36,6 @@ At each checkpoint, record the submitted dB values and collect one API readback 
 | During the event | Rounds 2-4 | Lab 109 above 55.0 dB with stored High and Lab 210 still Normal. Round 4 offers three elevated observations for the visit decision when all readings have arrived. |
 | After recovery | Rounds 5-8 | Lab 109 within target with stored Normal, plus Lab 210 still Normal. The recorded history shows the preceding event. |
 
-Use the actual model targets if they differ from the example. Additional read-only `monitoring inspect` output can confirm the configured room properties and current stored statuses. Keep credentials, ingestion links, raw discovery data and private audit files out of shared screenshots and submissions.
+Use the actual model targets if they differ from the example. Additional read-only `monitoring inspect` output can confirm the configured room properties and current stored statuses. Keep credentials, ingestion links, raw discovery data and private audit files out of anything you share.
 
-Simulator previews are expected values, and the offline tests use mocked responses. The audit records request outcomes. Readback of the individual connection and the room property establishes what Tandem stored. The [historical live pilot](LIVE_HANDOFF.md#one-round-pilot-checkpoint-completed) records an earlier round 1. Collect evidence from your own run for the assignment.
+Simulator previews are expected values, and the offline tests use mocked responses. The audit records request outcomes. Readback of the individual connection and the room property establishes what Tandem stored. The [historical live pilot](LIVE_HANDOFF.md#one-round-pilot-checkpoint-completed) records an earlier round 1. Use readback from your own run to verify your results.

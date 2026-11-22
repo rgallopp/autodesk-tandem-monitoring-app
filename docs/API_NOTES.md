@@ -40,6 +40,6 @@ Connections use full logical keys; scans/mutations use short element keys. Cross
 
 Requests disable redirects and implicit netrc/environment credentials, use connect/read timeouts, and bound response sizes. History uses strict shapes, day-aware pagination and bounded ranges/pages. Ingestion and mutation each receive one attempt. Successful empty ingestion bodies are permitted, and the audit records the actual HTTP status.
 
-Each accepted reading is evaluated against its room's current target using the submitted value. A changed status is written to that room's owning model. The audit records the ingestion and status outcomes independently for each lab. A later read of stream history and room properties supplies assignment evidence. Mutation response time and ingestion time are separate API timestamps.
+Each accepted reading is evaluated against its room's current target using the submitted value. A changed status is written to that room's owning model. The audit records the ingestion and status outcomes independently for each lab. Read the stream history and room properties to confirm what Tandem stored. Mutation response time and ingestion time are separate API timestamps.
 
 There is no transaction, server compare-and-swap or exactly-once guarantee. See [REVIEW](REVIEW.md) for clock, concurrency, partial-write and quality limitations. Mapping setup is intentionally separate: HTTP acceptance without saved mappings is not retained-history verification.

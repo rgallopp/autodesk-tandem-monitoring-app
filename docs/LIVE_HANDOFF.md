@@ -64,7 +64,7 @@ Round numbers are local scenario selections recorded in the audit. Use the UTC r
 
 ## Streamlit opening and refresh
 
-Run `.\.venv\Scripts\python.exe -m streamlit run app.py` and open http://localhost:8501. Opening, **Refresh**, and changing **Show last** retrieve actual Tandem history and room properties with read-only access. The cards show each room's latest retained reading, model target, stored status and age. Capture the three checkpoints using the [assignment evidence guide](VERIFICATION.md).
+Run `.\.venv\Scripts\python.exe -m streamlit run app.py` and open http://localhost:8501. Opening, **Refresh**, and changing **Show last** retrieve actual Tandem history and room properties with read-only access. The cards show each room's latest retained reading, model target, stored status and age. Capture the three checkpoints using the [verification guide](VERIFICATION.md#verify-the-demo-results).
 
 ## Interactive simulator controls
 

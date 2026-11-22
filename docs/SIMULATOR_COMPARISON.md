@@ -30,7 +30,7 @@ MIT adaptations remain attributed separately in [NOTICE](../NOTICE.md).
 | Authentication/requests | Caller supplies Authorization; fetch has no explicit abort deadline or overlap guard | Basic ingestion credentials separated from endpoints; APS Bearer for reads/status writes; explicit scopes, bounded timeouts, no redirects or write retries |
 | Intervals | Immediate call then setInterval; TIMEOUT=5 means five minutes; nonpositive means no periodic sends | At least 60 real seconds per connection with persistent attempt/completion pacing and same-checkout lock |
 | Timestamps | No reserved event timestamp | No timestamp field posted; actual Tandem ingestion timestamps used in reads, evidence and charts; scenario rounds remain local |
-| Errors/evidence | Throws on 403, warns on other non-200, logs count; no retained-data readback | Sanitized HTTP/unknown outcomes and UTC send bounds; students confirm retention and stored room properties with a separate Tandem read |
+| Errors/evidence | Throws on 403, warns on other non-200, logs count; no retained-data readback | Sanitized HTTP/unknown outcomes and UTC send bounds; a separate Tandem read confirms retention and stored room properties |
 
 Source settings are examples, not service requirements. A stream count does not prove retention. TIMEOUT denotes sending cadence, not a network deadline.
 

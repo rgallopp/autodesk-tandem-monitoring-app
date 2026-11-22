@@ -25,7 +25,7 @@ For a new setup, supply the Individual Copy Links privately and follow the [mapp
 
 | Private value | Where it belongs / how obtained |
 |---|---|
-| APS_CLIENT_ID and APS_CLIENT_SECRET | This repository's ignored `.env`; an existing APS app, copied from the sibling private file only with owner authorization |
+| APS_CLIENT_ID and APS_CLIENT_SECRET | This repository's ignored `.env`; credentials for your authorized APS app |
 | TANDEM_LAB_A_URL / TANDEM_LAB_B_URL | Same `.env`; each new noise connection's Individual ingestion Copy Link; contains a secret |
 | facility_urn and region | Ignored `config/project.json`; selected facility and configured region |
 | connection_key | Discovery/export, cross-checked against each new Copy Link |
@@ -33,7 +33,7 @@ For a new setup, supply the Individual Copy Links privately and follow the [mapp
 | parameters.noise_db | Noise Level qualified ID in the default connection model |
 | asset.target_parameter / status_parameter | Noise Target / Noise Status qualified IDs in the room model |
 | asset.number_parameter / comments_parameter | Source Number / Comments IDs in the room schema |
-| Expected names/numbers/Comments and classifications | The actual selected rooms/connections, checked against the intended reference |
+| expected_connection_name, asset.expected_name, asset.expected_number, asset.comments_contains, classifications | Match the selected connection name, room name and number, Revit Comments text, and classifications in your facility |
 
 APS reads use `data:read`. Manual sends, the guided demo, and the command-line pilot use `data:read data:write` and require **facility Edit access** for the APS app. In Tandem, open the facility's **Users**, then **Services**, select the app identified by your local `APS_CLIENT_ID`, change **Read** to **Edit**, and save. The read-only `monitoring inspect` command reports whether status writeback is allowed. Mapping samples use read access for model checks and authenticate separately to the Individual connections.
 

@@ -37,4 +37,4 @@ The reference targets are teaching settings. Revit Comments give BIM room-use co
 
 An accepted reading is evaluated against its room's current Tandem target. The first accepted reading can initialize an empty Noise Status. Later, the app writes only when the status changes. After round 4, refresh to see whether Tandem returns three successive high readings for Lab 109. Those observations support a decision about a visit.
 
-Use [assignment evidence](VERIFICATION.md) for recording the three checkpoints with actual Tandem timestamps and Streamlit screenshots. For the command-line version of the same scenario, see [the handoff](LIVE_HANDOFF.md).
+Use the [verification guide](VERIFICATION.md#verify-the-demo-results) to record the three checkpoints with actual Tandem timestamps and Streamlit screenshots. For the command-line version of the same scenario, see [the handoff](LIVE_HANDOFF.md).
