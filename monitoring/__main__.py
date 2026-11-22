@@ -11,7 +11,7 @@ from .api import TandemClient
 from .config import ROOT, TutorialError, key, load, read_json, urn
 from .dashboard import snapshot
 from .simulation import rounds
-from .workflow import RunGuard, event, preflight, run
+from .workflow import MIN_SEND_INTERVAL, RunGuard, event, preflight, run
 
 
 def discover(client, facility, model=None, element=None):
@@ -53,13 +53,19 @@ def discover(client, facility, model=None, element=None):
             "source_fields": client.stream_configs(default) if selected == default else {}}
 
 
+def report_outcome(kind, data):
+    if kind in ("ingest_outcome", "status_outcome"):
+        detail = data.get("error") or data.get("status") or f"HTTP {data['http_status']}"
+        print(f"Round {data['round']}, {data['sensor']}: {data['outcome']} ({detail})", flush=True)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=["preview", "discover", "inspect", "seed", "pilot", "read"])
     parser.add_argument("--config", type=Path)
     parser.add_argument("--start-round", type=int, default=1, help="First numbered local round (not sent as a timestamp)")
     parser.add_argument("--steps", type=int, default=None)
-    parser.add_argument("--interval", type=float, default=60, help="Minimum real seconds per connection")
+    parser.add_argument("--interval", type=float, default=MIN_SEND_INTERVAL, help="Minimum real seconds per connection")
     parser.add_argument("--send", action="store_true", help="Required for seed/pilot writes")
     parser.add_argument("--facility", help="Discovery only: facility URN, no filled model config needed")
     parser.add_argument("--region", choices=["US", "EMEA", "AUS"], default="US", help="Discovery only")
@@ -111,16 +117,18 @@ def main(argv=None):
             output_path.parent.mkdir(parents=True, exist_ok=True)
             with guard, output_path.open("x", encoding="utf-8") as output:
                 event(output, "run_started", mode=args.command, steps=steps, interval=args.interval,
-                      evidence="Request outcomes record live attempts; only round_verified establishes pilot readback")
+                      evidence="Use a separate Tandem read to confirm stored readings and statuses.")
                 try:
                     with TandemClient(config["region"], write=args.command == "pilot") as client:
-                        accepted = run(client, config, batches, output, guard, seed_only=args.command == "seed", start_round=args.start_round)
-                    event(output, "run_completed", mode=args.command, success=accepted)
+                        success = run(client, config, batches, output, guard, seed_only=args.command == "seed",
+                                      start_round=args.start_round, on_progress=report_outcome)
+                    event(output, "run_completed", mode=args.command, success=success)
                 except TutorialError as error:
                     event(output, "run_stopped", error=str(error), note="Partial/unknown writes possible; inspect before restarting.")
                     raise
-            print("Private audit recorded. Mapping samples are not retention/status verification. Stop after seed to save the mappings." if args.command == "seed" else "Private audit recorded; inspect round_verified events.")
-            if not accepted:
+            print("Private audit recorded. Save the source mappings after seed." if args.command == "seed"
+                  else "Private audit recorded. Use monitoring read to confirm Tandem history and stored status.")
+            if not success:
                 return 1
         else:
             with TandemClient(config["region"]) as client:

@@ -1,5 +1,6 @@
 """Offline API-only display and real-timestamp decision support fixtures."""
 
+from datetime import datetime
 import unittest
 from unittest.mock import patch
 
@@ -27,7 +28,9 @@ class AppTests(unittest.TestCase):
         a, b = data["cards"]
         self.assertEqual((a["measurement"], a["target"], a["stored_status"]), (66.3, 55, "High"))
         self.assertEqual(b["stored_status"], "Normal")
-        self.assertIn("+00:00", a["ingested_utc"])
+        self.assertEqual([a["connection"], b["connection"]], ["Noise_ComputerLabA_109", "Noise_ComputerLabB_210"])
+        self.assertEqual(round(datetime.fromisoformat(a["ingested_utc"]).timestamp() * 1000),
+                         client.records["room-a"][-1][0])
         self.assertEqual(before, len([c for c in client.calls if c[0] in {"ingest", "mutate"}]))
 
     def test_actual_sentinel_reading_has_no_simulator_fallback(self):

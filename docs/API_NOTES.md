@@ -26,20 +26,20 @@ API base: `https://developer.api.autodesk.com/tandem/v1/`, with Bearer and Regio
 | Current properties | POST modeldata/{modelURN}/scan | short keys, qualifiedColumns, includeHistory:false, skipArrays:true; response starts with v1 |
 | Saved mapping | GET models/{defaultModelURN}/stream-configs | elementId, streamSettings.sourceMapping; expose only safe flat source fields |
 | History | GET timeseries/models/{defaultModelURN}/streams/{fullConnectionKey} | substream parameter; actual epoch-millisecond keys and numeric values |
-| Status mutation | POST modeldata/{roomModelURN}/mutate | keys and muts same length, one entry per changed room status; require real response timestamp |
+| Status mutation | POST modeldata/{roomModelURN}/mutate | keys and muts same length, one entry for the changed room status; require real response timestamp |
 
 Individual ingestion goes separately to the validated `tandem.autodesk.com` Copy Link destination with Basic credentials passed outside the URL. No APS token is sent there. Body contains only numeric `noise_db`. No client timestamp or numbered-round field is posted; Tandem supplies actual ingestion time.
 
 Noise Level is read in the default connection model. Noise Target and Noise Status are read/written in each room's owning model using IDs from that model's schema, which may differ from default-model IDs. Native schema dB metadata is checked; payload 45.0, target 55.0 and returned 45.0 are on the same direct numeric dB scale. Saved incoming-unit choices must also be checked in the UI; exact readback detects conversion/aggregation that changes values.
 
-Restricted Text mutations send the exact label, for example `["i","z","STATUS_COLUMN","High"]`. Readback accepts either canonical labels or an unambiguous value ID from this property's own allowedValues map. Empty is not Normal. Arbitrary numeric/string substitutions and old labels are rejected. Actual restricted Text mutation/retention is still a later live pilot check.
+Restricted Text mutations send the exact label, for example `["i","z","STATUS_COLUMN","High"]`. Readback accepts either canonical labels or an unambiguous value ID from this property's own allowedValues map. An empty field indicates that the status is unset. Arbitrary numeric/string substitutions and old labels are rejected.
 
 ## Identity, bounds and failure handling
 
 Connections use full logical keys; scans/mutations use short element keys. Cross-model references contain model bytes plus the element key. For this lab example both `x:p` (Host) and effective `x:r` / `x:!r` (Rooms, including override) must resolve to the selected room. Empty explicit room overrides suppress the inherited room reference.
 
-Requests disable redirects and implicit netrc/environment credentials, use connect/read timeouts, and bound response sizes. History uses strict shapes, day-aware pagination and bounded ranges/pages. Pending retention/property reads alone are polled; authentication/network failures and all writes have no automatic retry. Successful empty ingestion bodies are permitted, and actual HTTP status is recorded.
+Requests disable redirects and implicit netrc/environment credentials, use connect/read timeouts, and bound response sizes. History uses strict shapes, day-aware pagination and bounded ranges/pages. Ingestion and mutation each receive one attempt. Successful empty ingestion bodies are permitted, and the audit records the actual HTTP status.
 
-After both accepted pilot sends, read retained values within actual request UTC bounds, compare exact one-decimal values, reread model targets/state, evaluate, check for concurrent changes, mutate changed statuses and verify properties. No target/classification/relationship is modified. An unchanged status produces no mutation. Mutation response time and actual ingestion time are different API timestamps.
+Each accepted reading is evaluated against its room's current target using the submitted value. A changed status is written to that room's owning model. The audit records the ingestion and status outcomes independently for each lab. A later read of stream history and room properties supplies assignment evidence. Mutation response time and ingestion time are separate API timestamps.
 
 There is no transaction, server compare-and-swap or exactly-once guarantee. See [REVIEW](REVIEW.md) for clock, concurrency, partial-write and quality limitations. Mapping setup is intentionally separate: HTTP acceptance without saved mappings is not retained-history verification.

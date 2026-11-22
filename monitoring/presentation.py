@@ -36,16 +36,21 @@ def age_label(value, now):
 
 
 def card_state(card, now):
+    status = card["stored_status"]
     if card["measurement"] is None:
-        return "No readings in this period", "Choose a longer history range.", "muted"
+        return "No readings in this period", f"Stored Noise Status: {status or 'Awaiting evaluation'}.", "muted"
     if not 0 <= (now - datetime.fromisoformat(card["ingested_utc"])).total_seconds() <= 300:
-        return "No recent reading", f"Last recorded: {card['measurement']:.1f} dB · {card['stored_status'] or 'Awaiting evaluation'}", "muted"
-    if card["stored_status"] is None:
+        return "No recent reading", f"Stored Noise Status: {status or 'Awaiting evaluation'}.", "muted"
+    if status is None:
         return "Awaiting evaluation", "A reading is available; the stored status is empty.", "muted"
     if card["quality"] == "UNVERIFIED_STATUS":
-        return "Status needs checking", "The reading and target do not match the stored status.", "muted"
-    status = card["stored_status"]
-    return status, "", "high" if status == "High" else "normal"
+        return "Status needs checking", f"Stored Noise Status: {status}. The latest reading and target imply a different status.", "muted"
+    if status == "High":
+        count = card["successive_high_readings"]
+        if count > 1:
+            return status, f"{count} successive readings above target. Review whether a visit is needed.", "high"
+        return status, "Latest reading is above target.", "high"
+    return status, "Latest reading is within target.", "normal"
 
 
 def card_html(card, now):

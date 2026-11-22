@@ -1,105 +1,109 @@
-"""Simulator controls; only explicit buttons can launch a sending workflow."""
+"""Simulator controls; sending requires an explicit button click."""
+
 import streamlit as st
-from .config import ROOT, TutorialError, load, read_json
+
+from .config import ROOT, TutorialError, db_value, load
 from .execution import CONTROLLER, availability, planned
 from .rules import evaluate
-from .api import TandemClient
-from .workflow import preflight
+from .simulation import checkpoint
+
+
+def show_outcomes(config, state):
+    for sensor in config["sensors"]:
+        lab = state["outcomes"].get(sensor["id"], {})
+        reading = lab.get("ingest_outcome")
+        status = lab.get("status_outcome")
+        if not reading:
+            continue
+        label = sensor["label"]
+        if reading["outcome"] == "DELIVERY_UNKNOWN":
+            st.warning(f"{label}: Reading delivery uncertain. {reading['error']}")
+        elif reading["outcome"] == "HTTP_ERROR":
+            st.error(f"{label}: Reading rejected. {reading['error']}")
+        else:
+            st.caption(f"{label}: Reading accepted (HTTP {reading['http_status']}).")
+            if status and status["outcome"] == "STATUS_UPDATED":
+                st.caption(f"{label}: Room status updated to {status['status']}.")
+            elif status and status["outcome"] == "STATUS_UNCHANGED":
+                st.caption(f"{label}: Room status already {status['status']}.")
+            elif status:
+                st.error(f"{label}: Status update failed. {status['error']}")
+            elif not state["active"]:
+                st.caption(f"{label}: Room status update did not finish.")
+
 
 def render(targets):
     try:
         config = load(ROOT / "config/project.json", live=True)
         state = CONTROLLER.status()
-        ready = availability(config)
+        ready = availability(config, CONTROLLER.folder, CONTROLLER.now)
     except (TutorialError, OSError, ValueError, KeyError, TypeError):
-        st.info("Simulator unavailable. Check configuration, pacing state and saved evidence.")
+        st.info("Simulator unavailable. Check configuration and pacing state.")
         return
+
+    wait = max(ready["waits"].values())
+    disabled = state["active"] or ready["busy"] or wait > 0
     with st.expander("Simulator", expanded=False):
-        st.caption("Sends readings and updates room statuses in Tandem.")
-        disabled = bool(state["active"] or ready["busy"] or ready["review"] or any(ready["waits"].values()))
-        for sensor in config["sensors"]:
-            wait = ready["waits"][sensor["id"]]
-            if wait:
-                st.caption(f"{sensor['label']}: ready in {wait} seconds. Click again when ready; nothing is queued.")
-        if ready["busy"] and not state["active"]:
-            st.info("Another sender is active, or a previous server left a lock. Check Technical details.")
-        if ready["review"] and not ready["busy"] and not state["active"]:
-            issue = state.get("issue")
-            if not issue:
-                try:
-                    import json
-                    from pathlib import Path
-                    marker = read_json(CONTROLLER.folder / "review.json")
-                    records = [json.loads(line) for line in Path(marker["audit"]).read_text(encoding="utf-8").splitlines()]
-                    stage = "room-status writeback" if any(r["kind"] == "mutation_intent" and r.get("round") == marker["round"] for r in records) else "stored measurement readback"
-                    issue = f"Round {marker['round']}: {stage} has not been verified. Retry checks this recorded attempt without sending measurements."
-                except (TutorialError, OSError, ValueError, KeyError, TypeError):
-                    issue = "Recorded verification evidence could not be read. Check the saved audit."
-            st.info(issue)
-            if st.button("Retry verification"):
-                try:
-                    CONTROLLER.retry_verification(config)
-                    st.rerun()
-                except (TutorialError, OSError, ValueError, KeyError, TypeError):
-                    st.error("Could not start verification. Check the active sender and saved evidence.")
-        if targets is None:
-            st.info("Refresh model data to enable new sends.")
-            if state["active"]:
-                st.caption(state["phase"])
-                if st.button("Stop"):
-                    CONTROLLER.stop()
-            return
+        if not state["active"]:
+            if ready["busy"]:
+                st.info("The run lock is held by another sender or a stopped process.")
+            elif wait:
+                st.caption(f"Ready to send in {wait}s.")
+
         mode = st.radio("Mode", ["Guided demo", "Try your own readings"], horizontal=True, label_visibility="collapsed")
+        values = None
         if mode == "Guided demo":
-            st.caption("8 rounds \u00b7 at least 60 seconds between readings per lab")
-            preview, start, stop = st.columns(3)
-            if preview.button("Preview", disabled=state["active"]):
+            st.caption("Before the event (round 1), during the event (2–4), after recovery (5–8).")
+            preview, start = st.columns(2)
+            has_targets = all(s["id"] in targets for s in config["sensors"])
+            if preview.button("Preview", disabled=state["active"] or not has_targets):
+                st.session_state.show_preview = True
+            if has_targets and st.session_state.get("show_preview"):
                 try:
-                    with TandemClient(config["region"]) as client:
-                        _, states = preflight(client, config)
-                    st.session_state.planned_rows = planned(config, {sid: v["target"] for sid, v in states.items()})
-                except (TutorialError, OSError, ValueError, KeyError, TypeError):
-                    st.error("Could not read model targets. Refresh and try Preview again.")
-            if start.button("Start demo", disabled=disabled):
-                try:
-                    CONTROLLER.start(config, "guided")
-                    st.rerun()
-                except (TutorialError, OSError, ValueError, KeyError, TypeError):
-                    st.error("Cannot start. Check cooldown, the active sender and saved evidence.")
-            if stop.button("Stop", disabled=not state["active"]):
-                CONTROLLER.stop()
-            if st.session_state.get("planned_rows"):
-                st.caption("Planned results using model targets at Preview. Actual results require verified Tandem readback.")
-                st.dataframe(st.session_state.planned_rows, hide_index=True)
+                    st.dataframe(planned(config, targets), hide_index=True)
+                except TutorialError as error:
+                    st.error(str(error))
+            clicked = start.button("Start demo", disabled=disabled)
+            run_mode = "guided"
         else:
-            values = {}
-            for column, sensor, initial in zip(st.columns(2), config["sensors"], (45.0, 40.0)):
-                with column:
+            values, valid = {}, True
+            columns = st.columns(2)
+            for index, sensor in enumerate(config["sensors"]):
+                with columns[index % len(columns)]:
                     sid = sensor["id"]
-                    values[sid] = st.number_input(f"Lab {sensor['asset']['expected_number']} noise level (dB)", value=initial, step=0.1, format="%.1f", disabled=state["active"])
-                    st.caption(f"Current Tandem target {targets[sid]:.1f} dB")
+                    target = targets.get(sid)
+                    value = st.number_input(f"Lab {sensor['asset']['expected_number']} noise level (dB)",
+                                            value=float(sensor["simulation"]["values"][0]), step=0.1,
+                                            format="%.1f", key=f"sim_reading_{sid}", disabled=state["active"])
                     try:
-                        st.caption("Expected status (planned): " + evaluate(values[sid], targets[sid]))
-                    except (TutorialError, OSError, ValueError, KeyError, TypeError):
+                        values[sid] = db_value(value)
+                        if target is not None:
+                            st.caption(f"Tandem target {target:.1f} dB")
+                            st.caption(f"Expected status: {evaluate(value, target)}")
+                        else:
+                            st.caption("Refresh to load the Tandem target.")
+                    except TutorialError:
+                        valid = False
                         st.error("Enter a finite value with one decimal place.")
-            if st.button("Send readings", disabled=disabled):
-                try:
-                    CONTROLLER.start(config, "custom", values)
-                    st.rerun()
-                except (TutorialError, OSError, ValueError, KeyError, TypeError):
-                    st.error("Cannot send. Check values, cooldown, the active sender and saved evidence.")
-            if st.button("Stop", disabled=not state["active"]):
-                CONTROLLER.stop()
-        state = CONTROLLER.status()
-        if state["active"] and not state["total"]:
-            st.caption(state["phase"])
+            clicked = st.button("Send readings", disabled=disabled or not valid)
+            run_mode = "custom"
+
+        if clicked:
+            try:
+                CONTROLLER.start(config, run_mode, values)
+                st.rerun()
+            except TutorialError as error:
+                st.error(str(error))
+            except OSError:
+                st.error("Could not start the simulator. Check local file access.")
+
+        if state["active"] and st.button("Stop"):
+            CONTROLLER.stop()
         if state["total"]:
-            st.write(f"Round {state['round']} of {state['total']}")
-            st.progress(state["completed"] / state["total"], text=f"{state['completed']} rounds verified")
+            if state["mode"] == "guided" and state["round"]:
+                st.caption(f"{checkpoint(state['round'])} · Round {state['round']} of {state['total']}")
+                st.progress(state["completed"] / state["total"])
             st.caption(state["phase"])
-            if state["verified"]:
-                st.caption(f"Last completed round {state.get('verified_round', state['completed'])}")
-            for sensor in config["sensors"]:
-                status = state["verified"].get(sensor["id"])
-                if status:
-                    st.caption(f"Lab {sensor['asset']['expected_number']} verified \u00b7 {status}")
+            show_outcomes(config, state)
+            if not state["active"] and any("ingest_outcome" in lab for lab in state["outcomes"].values()):
+                st.caption("Use Refresh to read the stored room statuses and history from Tandem.")

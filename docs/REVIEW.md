@@ -16,14 +16,14 @@ Offline tests use an in-memory client, controlled clock, mocked HTTP and Streaml
 
 Read-only live discovery on November 16, 2026 separately established the two lab identities, saved target values, empty statuses, schema vocabulary/dB metadata, host/room relationships and initially facility access **Read**. A subsequent preflight using the new implementation passed and reports **Manage**, sufficient for later writeback. Complete credentials/URLs/identifiers remain private. No status mutation was used to test access.
 
-The first bounded live pilot established accepted ingestion, exact retained dB values, model targets and verified Normal status writes for both labs. Subsequent dashboard rendering was checked against actual API data. Interactive simulator controls and automatic reconciliation have offline fixture evidence, including delayed, failed and interrupted operations; those tests do not independently prove every tenant timing/failure behavior. Saved live evidence remains private. The example does not establish physical calibration, operating-target suitability, multi-client coordination or exactly-once delivery.
+The first bounded live pilot established accepted ingestion, exact retained dB values, model targets and verified Normal status writes for both labs. Subsequent dashboard rendering was checked against actual API data. The current simulator uses offline fixtures to cover delayed visibility, failed updates, uncertain ingestion and interruption. Saved live evidence remains private. The example does not establish physical calibration, operating-target suitability, multi-client coordination or exactly-once delivery.
 
 
 ## Limits
 
-Readback checks actual retained timestamp/value within the request window, then fresh target/state, then mutation and fresh property verification. Polls repeat only pending reads. Network/auth/malformed-response failures stop. All writes are attempted once. An uncertain write requires investigation before resending.
+Each accepted reading is evaluated against the room's current target and can update that room's status. Refresh or use the read command to compare the retained reading and stored status. An uncertain send or status write receives one attempt. Inspect an uncertain outcome with read-only tools before deciding whether to send again.
 
-There is no server compare-and-swap, exactly-once guarantee or multi-model transaction. An external writer can race the final state scan; one model can succeed before another fails. Use a single sender/writer, retain audits and inspect partial state. The target is rechecked after mutation so a changed target prevents a verified claim.
+Concurrent external writers can change a room target or status between the model read and write. The labs' requests are independent, so one may succeed while the other fails. The per-lab audit preserves the outcomes.
 
 The workstation clock must be synchronized. Persisted pacing protects this checkout across restarts, not other computers. The dashboard's five-real-minute freshness policy and configurable 180-second gap-review threshold suit the one-minute pilot; reconsider them for slower operational monitoring.
 

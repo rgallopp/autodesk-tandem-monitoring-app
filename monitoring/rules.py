@@ -1,4 +1,4 @@
-"""Reference rule: one verified dB reading above its model target means High.
+"""Reference rule: one dB reading above its model target means High.
 
 Campus support staff decide whether to visit. Revit Comments describe room use;
 neither the rule nor the application infers occupancy or a sound source.
@@ -8,7 +8,7 @@ from .config import TutorialError, db_value
 
 
 def evaluate(measurement, target):
-    """(verified reading in dB, model target in dB) -> exact restricted Text label."""
+    """(reading in dB, model target in dB) -> exact restricted Text label."""
     return "High" if db_value(measurement) > db_value(target) else "Normal"
 
 

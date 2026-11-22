@@ -30,7 +30,7 @@ def setup(root=ROOT):
         raise RuntimeError("Existing .venv interpreter is unusable; preserve it and recreate locally.")
     subprocess.run([str(python), "-m", "pip", "install", "-r", str(root / "requirements-lock.txt")], check=True)
     subprocess.run([str(python), "-m", "pip", "check"], check=True)
-    print("Environment ready. Run the README's offline preview next.")
+    print("Environment ready. Follow the README's Run locally section to configure and start the app.")
 
 
 if __name__ == "__main__":

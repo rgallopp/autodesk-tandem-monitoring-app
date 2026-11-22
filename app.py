@@ -8,6 +8,7 @@ from monitoring.config import ROOT, TutorialError, load
 from monitoring.dashboard import snapshot
 from monitoring.execution import CONTROLLER
 from monitoring.simulator_ui import render as simulator_controls
+from monitoring.workflow import preflight
 from monitoring.presentation import (DEFAULT_TIMEZONE, card_html, chart_domain, clock_label,
                                      details_rows, lab_label, noise_chart)
 
@@ -27,7 +28,7 @@ h1 {font-size:1.85rem !important; letter-spacing:-.03em}
 .note {font-size:.82rem;min-height:24px;margin-top:12px}
 </style>""", unsafe_allow_html=True)
 st.title("Computer Lab Noise Monitoring")
-st.caption("Simulated data")
+st.caption("Simulated readings · Tandem-recorded timestamps")
 @st.fragment(run_every=2)
 def dashboard():
     controls = st.columns([2, 1, 2], vertical_alignment="bottom")
@@ -36,20 +37,21 @@ def dashboard():
     with controls[1]:
         refresh = st.button("Refresh", type="primary", width="stretch")
     minutes = {"15 minutes": 15, "30 minutes": 30, "1 hour": 60, "24 hours": 1440}[period]
-    run_state = CONTROLLER.status()
-    if refresh or st.session_state.get("history_minutes") != minutes or "result" not in st.session_state or st.session_state.get("run_revision", 0) != run_state["revision"]:
-        st.session_state.run_revision = run_state["revision"]
+    if refresh or st.session_state.get("history_minutes") != minutes or "targets" not in st.session_state:
         st.session_state.history_minutes = minutes
         # Clear prior results on failure rather than imply they are current.
         st.session_state.result = None
         st.session_state.failure = None
+        st.session_state.targets = {}
         try:
             config = load(ROOT / "config/project.json", live=True)
             zone = config.get("display_timezone", DEFAULT_TIMEZONE)
             ZoneInfo(zone)
             with st.spinner("Updating…"):
                 with TandemClient(config["region"]) as client:
-                    data = snapshot(client, config, minutes)
+                    model_state = preflight(client, config)
+                    st.session_state.targets = {sid: state["target"] for sid, state in model_state[1].items()}
+                    data = snapshot(client, config, minutes, model_state=model_state)
             st.session_state.result = data
             st.session_state.zone = zone
             st.session_state.refreshed = datetime.now(timezone.utc).isoformat()
@@ -62,14 +64,14 @@ def dashboard():
             st.caption("Last refreshed —")
     if st.session_state.get("failure"):
         st.error(st.session_state.failure)
-        simulator_controls(None)
+        simulator_controls(st.session_state.targets)
     elif st.session_state.get("result"):
         data, zone = st.session_state.result, st.session_state.zone
         now = datetime.now(timezone.utc)
         for column, card in zip(st.columns(2), data["cards"]):
             with column:
                 st.markdown(card_html(card, now), unsafe_allow_html=True)
-        simulator_controls({c["sensor"]: c["target"] for c in data["cards"]})
+        simulator_controls(st.session_state.targets)
         st.subheader("Noise history")
         st.caption("Times shown in " + zone.replace("_", " "))
         for column, card in zip(st.columns(2), data["cards"]):
@@ -93,7 +95,7 @@ def dashboard():
             for issue in issues:
                 st.caption(issue)
         with st.expander("Technical details", expanded=False):
-            st.json({"simulator": CONTROLLER.status(), "evidence": "outputs/ui-run-*.jsonl; .state/attempts.json; .state/review.json", "source": data["source"], "refreshed_utc": st.session_state.refreshed,
+            st.json({"simulator": CONTROLLER.status(), "evidence": "outputs/ui-run-*.jsonl; .state/attempts.json", "source": data["source"], "refreshed_utc": st.session_state.refreshed,
                      "latest": data["cards"], "history": data["trends"]})
 
 dashboard()

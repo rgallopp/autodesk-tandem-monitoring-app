@@ -27,12 +27,14 @@ Regenerate with:
 | 8 | Computer Lab A 109 | 43.8 | 55.0 | Normal | preserve |
 | 8 | Computer Lab B 210 | 46.6 | 50.0 | Normal | preserve |
 
-Computer Lab A 109 is Normal in round 1, High in rounds 2?4 and recovers in round 5. Computer Lab B 210 stays Normal. Readings vary deterministically on the same teaching dB scale, quantized to one decimal. The configured list replaces the earlier clock-driven generator so learners can reproduce this focused sequence without posting a second field.
+| Checkpoint | Rounds | Lab 109 | Lab 210 |
+|---|---|---|---|
+| Before the event | 1 | Normal | Normal |
+| During the event | 2-4 | High | Normal |
+| After recovery | 5-8 | Normal | Normal |
 
-The reference targets are illustrative, not acoustic guidance. Revit Comments supply the collaborative/individual BIM room-use context. Elevated values are scenario inputs; neither the app nor rule infers their cause or occupancy.
+The reference targets are teaching settings. Revit Comments give BIM room-use context. An elevated input does not identify the cause or establish occupancy.
 
-The first verified reading initializes Noise Status if empty. Unchanged Normal/High values cause no mutation; repeated High readings remain in retained history. At round 4 staff can review three successive high observations. The UI's count is evidence within the returned history window, not another status rule or an automatic visit instruction.
+An accepted reading is evaluated against its room's current Tandem target. The first accepted reading can initialize an empty Noise Status. Later, the app writes only when the status changes. After round 4, refresh to see whether Tandem returns three successive high readings for Lab 109. Those observations support a decision about a visit.
 
-The mapping samples are a separate preparatory stage, not the first verified pilot round. Preserve their actual UTC evidence. After saving mappings and granting Edit access, run the pilot as one round followed by a verified checkpoint and seven rounds starting at 2. See [handoff](LIVE_HANDOFF.md). Do not replay based on a status value: it cannot tell you which scenario round was last processed. There is no server run/round identifier.
-
-Use actual Tandem ingestion timestamps for all charts and live evidence. Missing series stop the read; empty/inconsistent/stale status is explicit. Long actual-time gaps are marked for review. The application cannot prove that every scheduled request was retained from timestamps alone, and never fabricates rows for absent numbered rounds.
+Use [assignment evidence](VERIFICATION.md) for recording the three checkpoints with actual Tandem timestamps and Streamlit screenshots. For the command-line version of the same scenario, see [the handoff](LIVE_HANDOFF.md).

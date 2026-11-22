@@ -8,11 +8,11 @@ from .rules import evaluate
 from .workflow import preflight
 
 
-def snapshot(client, config, minutes=30, now_ms=None):
+def snapshot(client, config, minutes=30, now_ms=None, *, model_state=None):
     if type(minutes) is not int or not 1 <= minutes <= 1440:
         raise TutorialError("Read 1..1440 real minutes.")
     now_ms = int(time.time() * 1000) if now_ms is None else now_ms
-    model, states = preflight(client, config)
+    model, states = model_state if model_state is not None else preflight(client, config)
     end_ms = now_ms + 1
     history = {}
     for sensor in config["sensors"]:
@@ -21,10 +21,11 @@ def snapshot(client, config, minutes=30, now_ms=None):
     cards, trends = [], []
     for sensor in config["sensors"]:
         sid, state = sensor["id"], states[sensor["id"]]
+        room = {"room": state["room_name"], "sensor": sid, "connection": sensor["expected_connection_name"],
+                "target": state["target"], "stored_status": state["status"]}
         rows = history[sid]
         if not rows:
-            cards.append({"room": state["room_name"], "sensor": sid, "measurement": None,
-                          "target": state["target"], "stored_status": state["status"], "ingested_utc": None,
+            cards.append({**room, "measurement": None, "ingested_utc": None,
                           "quality": "NO_DATA", "successive_high_readings": None})
             continue
         latest = rows[-1]
@@ -41,8 +42,7 @@ def snapshot(client, config, minutes=30, now_ms=None):
                     break
                 count += 1
                 previous_stamp = row["ingested_ms"]
-        cards.append({"room": state["room_name"], "sensor": sid, "measurement": latest["measurement"],
-                      "target": state["target"], "stored_status": state["status"],
+        cards.append({**room, "measurement": latest["measurement"],
                       "ingested_utc": datetime.fromtimestamp(latest["ingested_ms"] / 1000, timezone.utc).isoformat(),
                       "quality": quality, "successive_high_readings": count if quality == "CURRENT_READBACK" else None})
         previous_stamp = None

@@ -2,15 +2,15 @@
 
 The final worked example uses the [three-parameter setup table](MODEL_SETUP.md). Preserve existing evidence and use the new schema-version-2 private configuration. The two required lab selections are Computer Lab A 109 and Computer Lab B 210. Their targets are 55.0 and 50.0 dB. The two new Individual noise connections must each have its corresponding room as **both Host and Rooms relationship**.
 
-## Current checkpoint
+## Recorded setup
 
 Read-only live discovery verified both exact room/connection matches, room numbers, Revit Comments, Laboratory Spaces / General Measuring Instruments classifications, separate connection keys, owning model identities, empty statuses, targets and matching dB schema metadata. Private identifiers are stored only in ignored files. The latest configured live preflight reports **Manage** access, sufficient for the later status-writeback stage. Earlier discovery reported Read and a users-list request returned 403; that older result is preserved separately. No permission change or status mutation was made by these scripts.
 
-The two NEW noise Copy Links were supplied privately and passed destination checks. One mapping sample was attempted per connection on November 16, 2026; both returned HTTP 404. No retry or status mutation was attempted. Preserve the ignored mapping-sample audit and verify the current Individual ingestion links/settings in Tandem before deciding on any further send. The owner subsequently saved both mappings. A read-only `monitoring inspect` now passes both saved source mappings, room/connection checks and dB metadata, with Manage access and targets 55.0/50.0; both statuses remain empty. A read of the last 120 real minutes found no retained Noise Level for room-a and stopped before room-b history. No additional send or status mutation was attempted. The next live stage is the separate one-round pilot checkpoint, not an automatic replay of the failed mapping samples. Credentials and the facility selection were copied from authorized sibling private files; no equipment URLs were copied. Do not paste secrets into chat. File values take precedence over unrelated inherited process credentials.
+The two noise Copy Links were supplied privately and passed destination checks. The initial mapping samples on November 16, 2026 both returned HTTP 404. The owner subsequently saved both mappings, and read-only inspection confirmed them, along with the room and connection identities, dB metadata, Manage access and targets of 55.0/50.0. Both statuses were empty before the first successful pilot.
 
 ## One-round pilot checkpoint completed
 
-On November 16, 2026, the owner-authorized round 1 succeeded. Both Individual POSTs returned HTTP 200. API readback verified Lab 109 at 45.0 dB against 55.0 and Lab 210 at 40.0 against 50.0; both stored Noise Status values are now Normal. An independent read also returned CURRENT_READBACK for both labs. Actual ingestion UTC timestamps were 20:24:43.412 for 109 and 20:24:43.821 for 210. The private round_verified audit is retained; the earlier 404 evidence remains unchanged.
+On November 16, 2026, the owner-authorized round 1 succeeded. Both Individual POSTs returned HTTP 200. API readback verified Lab 109 at 45.0 dB against 55.0 and Lab 210 at 40.0 against 50.0; both stored Noise Status values are now Normal. An independent read also returned CURRENT_READBACK for both labs. Actual ingestion UTC timestamps were 20:24:43.412 for 109 and 20:24:43.821 for 210. The earlier private audit is retained; the earlier 404 evidence remains unchanged.
 
 The seven-round continuation has not been run. The next scenario selection is start-round 2 with steps 7, preserving the existing pacing state. Do not replay round 1 based on an empty-status assumption: initialization is now complete.
 
@@ -46,7 +46,7 @@ These are **later steps**, after mappings are saved/verified and Edit access is 
 .\.venv\Scripts\python.exe -B -m monitoring pilot --send --steps 1 --start-round 1 --interval 60
 ```
 
-Verify a `round_verified` audit with each connection's actual retained dB measurement and initialized Normal status, then independently read Tandem. Check actual UTC bounds, 45.0/40.0 dB readback, 55.0/50.0 targets and both stored statuses. If a POST or mutation was uncertain, preserve evidence and investigate before any new send.
+Check the per-lab send and status outcomes, then run `monitoring read --minutes 30` to confirm both retained readings, real UTC timestamps and stored statuses. At the example targets this checkpoint should show 45.0/40.0 dB and Normal/Normal. If delivery is uncertain, keep the audit and inspect separately before sending again.
 
 Only after the one-round checkpoint:
 
@@ -60,16 +60,12 @@ Use the [generated offline expectations](REFERENCE_PILOT.md) to compare the live
 
 Keep `.state/attempts.json` across commands: pacing is at least 60 real seconds per connection, measured from request completion as well as reservation. Request/processing overhead extends the run. The sender lock prevents concurrent sends from this checkout only. For a stale lock, confirm no sender is running, preserve audit/state, and remove only the stale `.state/run.lock`; do not reset pacing. A clock rollback stops execution.
 
-Round numbers are local scenario selections recorded in audit, not server-stored sequence IDs. Readback uses actual UTC timestamps and values, with a one-second lower-bound allowance. Keep the workstation clock synchronized. Do not run another sender against these connections during the pilot.
+Round numbers are local scenario selections recorded in the audit. Use the UTC request window and the recorded Tandem timestamps to match evidence. Keep the workstation clock synchronized and use one sender during the pilot.
 
 ## Streamlit opening and refresh
 
-Run `.\.venv\Scripts\python.exe -m streamlit run app.py` in this checkout, then open http://localhost:8501. The app uses its private configuration and read-only APS scope. Opening, clicking Refresh, or changing Show last retrieves fresh data. Other reruns reuse the current session result. No simulator is launched and no status is written by the app.
-
-Two room cards show readings, model targets, stored statuses and age; old readings are headed No recent reading. Noise history uses one chart per lab, a common dB scale, timezone-aware instants and current target lines. Reading details is collapsed; exact UTC evidence and diagnostic codes are isolated in Technical details. See the README for freshness and failure behavior. The existing first round is now old data and should not appear as a confirmed current condition. The continuation remains unstarted.
+Run `.\.venv\Scripts\python.exe -m streamlit run app.py` and open http://localhost:8501. Opening, **Refresh**, and changing **Show last** retrieve actual Tandem history and room properties with read-only access. The cards show each room's latest retained reading, model target, stored status and age. Capture the three checkpoints using the [assignment evidence guide](VERIFICATION.md).
 
 ## Interactive simulator controls
 
-The approved dashboard now includes a collapsed Simulator section. See the README Interactive Simulator walkthrough for Preview, Start demo, Stop and custom readings. Only explicit Start demo / Send readings clicks authorize sending and status updates. These UI controls call the shared CLI workflow, lock, persistent pacing and readback verification. They do not run on page opening or Refresh. This implementation was validated with offline fixtures; no new live measurements or status writes were made during integration.
-
-Keep the server alive during a run; closing a browser leaves the worker running. Stop first when you intend to interrupt. A server restart never resumes a run; stale locks and a pending .state/review.json require evidence review as documented in the README.
+Follow the [README walkthrough](../README.md#interactive-simulator) for manual readings and the guided demo. Both use the same paced submission and per-lab status writeback as the pilot. A server restart ends the worker. A closed browser leaves it running until the demo finishes or someone presses **Stop**.

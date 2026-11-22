@@ -3,6 +3,14 @@
 from .config import TutorialError, db_value
 
 
+def checkpoint(round_number):
+    if round_number == 1:
+        return "Before the event"
+    if round_number <= 4:
+        return "During the event"
+    return "After recovery"
+
+
 def rounds(config, start_round=1, steps=8):
     """One payload per sensor/round. Round numbers are local evidence, not timestamps."""
     available = min(len(s["simulation"]["values"]) for s in config["sensors"])

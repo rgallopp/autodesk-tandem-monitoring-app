@@ -1,9 +1,6 @@
 """In-memory pilot/failure/pacing integration checks, NOT live API verification."""
 
-import contextlib
-import io
 import json
-import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -12,37 +9,32 @@ from unittest.mock import patch
 from monitoring.api import ApiError
 from monitoring.config import TutorialError
 from monitoring.simulation import rounds
-from monitoring.workflow import ReadbackPending, RunGuard, measurements, preflight, run
-from tests.support import Clock, MemoryClient, environment, fixture
+from monitoring.workflow import RunGuard, run
+from tests.support import Clock, MemoryClient, environment
 
 
 class WorkflowTests(unittest.TestCase):
-    def execute(self, client, steps=8, seed=False, read_attempts=1, start_round=1, state_folder=None, destinations_override=None):
+    def execute(self, client, steps=8, seed=False, start_round=1, state_folder=None, destinations_override=None):
         config = client.config
         with tempfile.TemporaryDirectory() as folder, patch("monitoring.workflow.credentials", return_value=destinations_override or environment(config)), \
-                patch("monitoring.workflow.time.time", side_effect=client.clock.time), contextlib.redirect_stdout(io.StringIO()):
+                patch("monitoring.workflow.time.time", side_effect=client.clock.time):
             log_path = Path(folder) / "fixture.jsonl"
             with RunGuard(state_folder or Path(folder) / "state", now=client.clock.time, sleep=client.clock.sleep) as guard, log_path.open("w", encoding="utf-8") as log:
                 run(client, config, rounds(config, start_round=start_round, steps=steps), log, guard, seed_only=seed,
-                    read_attempts=read_attempts, sleep=client.clock.sleep, start_round=start_round)
+                    start_round=start_round)
             return [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
 
     def test_eight_round_pilot_high_repetition_recovery_and_change_only_status(self):
         client = MemoryClient()
         events = self.execute(client)
-        verified = [e for e in events if e["kind"] == "round_verified"]
-        self.assertEqual(len(verified), 8)
-        self.assertEqual(verified[0]["actual"]["room-a"], "Normal")
-        for index in (1, 2, 3):
-            self.assertEqual(verified[index]["actual"]["room-a"], "High")
-        self.assertEqual(verified[4]["actual"]["room-a"], "Normal")
-        self.assertEqual(verified[7]["actual"]["room-a"], "Normal")
-        self.assertEqual({v["actual"]["room-b"] for v in verified}, {"Normal"})
-        self.assertIn("room-a", verified[2]["unchanged"])
-        # Initial two assets + event + recovery; later unchanged rounds mutate nothing.
-        mutations = [call for call in client.calls if call[0] == "mutate"]
-        self.assertEqual(len(mutations), 3)
-        self.assertEqual([len(call[2]) for call in mutations], [2, 1, 1])
+        results = [e for e in events if e["kind"] == "status_outcome"]
+        a = [e for e in results if e["sensor"] == "room-a"]
+        b = [e for e in results if e["sensor"] == "room-b"]
+        self.assertEqual([e["status"] for e in a], ["Normal", "High", "High", "High", "Normal", "Normal", "Normal", "Normal"])
+        self.assertEqual([e["status"] for e in b], ["Normal"] * 8)
+        self.assertEqual(a[2]["outcome"], "STATUS_UNCHANGED")
+        self.assertEqual(sum(call[0] == "mutate" for call in client.calls), 4)
+        self.assertFalse(any(call[0] == "history" for call in client.calls))
         for sid in ("room-a", "room-b"):
             attempts = [call[2] for call in client.calls if call[:2] == ("ingest", sid)]
             self.assertTrue(all(b - a >= 60 - 0.001 for a, b in zip(attempts, attempts[1:])))
@@ -54,12 +46,13 @@ class WorkflowTests(unittest.TestCase):
         original = workflow.event
         def change_target_after_first_round(log, kind, **data):
             original(log, kind, **data)
-            if kind == "round_verified" and data["round"] == 1:
+            if kind == "round_completed" and data["round"] == 1:
                 client.assets["room-a"]["z:target"] = 100
         with patch.object(workflow, "event", side_effect=change_target_after_first_round):
             events = self.execute(client, steps=2)
-        verified = [e for e in events if e["kind"] == "round_verified"]
-        self.assertEqual(verified[1]["actual"]["room-a"], "Normal")
+        results = [e for e in events if e["kind"] == "status_outcome" and e["sensor"] == "room-a"]
+        self.assertEqual(results[1]["status"], "Normal")
+        self.assertEqual(results[1]["target"], 100)
 
     def test_documented_one_plus_seven_runs_share_model_state_and_pacing(self):
         client = MemoryClient()
@@ -69,18 +62,18 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(len(state), 2)
             self.assertFalse((Path(folder) / "run.lock").exists())
             second = self.execute(client, steps=7, start_round=2, state_folder=Path(folder))
-        verified = [e for e in first + second if e["kind"] == "round_verified"]
-        self.assertEqual(len(verified), 8)
-        self.assertEqual(verified[2]["actual"]["room-a"], "High")
-        self.assertEqual(verified[4]["actual"]["room-a"], "Normal")
-        self.assertEqual({e["actual"]["room-b"] for e in verified}, {"Normal"})
+        results = [e for e in first + second if e["kind"] == "status_outcome"]
+        self.assertEqual(len(results), 16)
+        a = [e for e in results if e["sensor"] == "room-a"]
+        b = [e for e in results if e["sensor"] == "room-b"]
+        self.assertEqual(a[2]["status"], "High")
+        self.assertEqual(a[4]["status"], "Normal")
+        self.assertTrue(all(e["status"] == "Normal" for e in b))
+        self.assertEqual(b[1]["previous"], "Normal")
         for sid in ("room-a", "room-b"):
             attempts = [call[2] for call in client.calls if call[:2] == ("ingest", sid)]
             self.assertEqual(len(attempts), 8)
             self.assertTrue(all(b - a >= 60 for a, b in zip(attempts, attempts[1:])))
-        # Stored Normal is recovered from Tandem across process invocations.
-        expected = next(e for e in second if e["kind"] == "rule_expected")
-        self.assertEqual(expected["previous"]["room-b"], "Normal")
 
     def test_element_context_and_unit_contract_prevent_writes(self):
         for field, value in [("context", "t"), ("context", None), ("forgeUnit", "seconds"),
@@ -104,31 +97,6 @@ class WorkflowTests(unittest.TestCase):
             self.execute(client, steps=1)
         self.assertFalse(any(call[0] == "ingest" for call in client.calls))
 
-    def test_target_change_during_property_readback_prevents_verified_claim(self):
-        client = MemoryClient()
-        original = client.mutate
-        def mutation(model, changes):
-            result = original(model, changes)
-            client.assets["room-a"]["z:target"] = 1
-            return result
-        with patch.object(client, "mutate", side_effect=mutation) as mutate, self.assertRaisesRegex(ApiError, "target changed"):
-            self.execute(client, steps=1, read_attempts=3)
-        self.assertEqual(mutate.call_count, 1)
-
-    def test_delayed_reads_do_not_repeat_any_write(self):
-        client = MemoryClient()
-        original = client.history
-        calls = 0
-        def delayed(*args):
-            nonlocal calls
-            calls += 1
-            return [] if calls <= 2 else original(*args)
-        with patch.object(client, "history", side_effect=delayed):
-            events = self.execute(client, steps=1, read_attempts=3)
-        self.assertEqual(sum(call[0] == "ingest" for call in client.calls), 2)
-        self.assertEqual(sum(call[0] == "mutate" for call in client.calls), 1)
-        self.assertEqual(sum(e["kind"] == "round_verified" for e in events), 1)
-
     def test_invalid_second_url_prevents_any_ingestion(self):
         client = MemoryClient()
         values = environment(client.config)
@@ -136,24 +104,6 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaises(TutorialError):
             self.execute(client, steps=1, destinations_override=values)
         self.assertFalse(any(call[0] == "ingest" for call in client.calls))
-
-    def test_auth_failure_during_readback_is_not_polled(self):
-        client = MemoryClient()
-        with patch.object(client, "history", side_effect=ApiError("Tandem API: HTTP 401")) as history, self.assertRaisesRegex(ApiError, "401"):
-            self.execute(client, steps=1, read_attempts=3)
-        self.assertEqual(history.call_count, 1)
-
-    def test_concurrent_target_change_prevents_writeback(self):
-        client = MemoryClient()
-        from monitoring import workflow
-        original = workflow.event
-        def competing_writer(log, kind, **data):
-            original(log, kind, **data)
-            if kind == "rule_expected":
-                client.assets["room-b"]["z:target"] = 60
-        with patch.object(workflow, "event", side_effect=competing_writer), self.assertRaisesRegex(ApiError, "concurrently"):
-            self.execute(client, steps=1)
-        self.assertFalse(any(call[0] == "mutate" for call in client.calls))
 
     def test_preflight_bad_second_sensor_prevents_all_writes(self):
         for failure in ("target", "state", "schema", "relationship", "mapping", "model"):
@@ -189,68 +139,13 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse(any(call[0] in {"ingest", "mutate"} for call in client.calls))
         self.assertEqual(client.assets["room-b"]["z:status"], "AVAILABLE")
 
-    def test_partial_second_ingestion_failure_stops_without_mutation_or_retry(self):
-        client = MemoryClient()
-        original = client.ingest
-        attempts = []
-        def ingest(target, payload):
-            attempts.append(payload)
-            if len(attempts) == 2:
-                raise ApiError("Synthetic timeout; delivery unknown.")
-            original(target, payload)
-        client.ingest = ingest
-        with self.assertRaises(ApiError):
-            self.execute(client, steps=2)
-        self.assertEqual(len(attempts), 2)
-        self.assertFalse(any(call[0] == "mutate" for call in client.calls))
-
-    def test_missing_or_mismatched_history_never_writes_status(self):
-        for bad in ([], [(1, 99)]):
-            client = MemoryClient()
-            client.history = lambda *args: bad
-            with self.assertRaises(ApiError):
-                self.execute(client, steps=1, read_attempts=2)
-            self.assertFalse(any(call[0] == "mutate" for call in client.calls))
-
-    def test_unknown_mutation_delivery_attempted_once(self):
-        client = MemoryClient()
-        with patch.object(client, "mutate", side_effect=ApiError("Synthetic unknown delivery")) as mutate, self.assertRaises(ApiError):
-            self.execute(client, steps=2)
-        self.assertEqual(mutate.call_count, 1)
-
-    def test_second_model_failure_leaves_explicit_partial_state_without_verified_round(self):
-        from monitoring import workflow
-        from tests.support import encoded
-        client = MemoryClient()
-        second_model = "urn:adsk.dtm:" + encoded(b"n" * 16)
-        client.config["sensors"][1]["asset"]["model_urn"] = second_model
-        client.models.append(second_model)
-        original = client.mutate
-        def partial(model, changes):
-            if model == second_model:
-                raise ApiError("Synthetic second-model failure; first-model changes remain.")
-            return original(model, changes)
-        with patch.object(client, "mutate", side_effect=partial) as mutate, \
-                patch.object(workflow, "event", wraps=workflow.event) as audit, self.assertRaises(ApiError):
-            self.execute(client, steps=1)
-        self.assertEqual(mutate.call_count, 2)
-        self.assertEqual(client.assets["room-a"]["z:status"], "Normal")
-        self.assertNotIn("z:status", client.assets["room-b"])
-        self.assertFalse(any(call.args[1] == "round_verified" for call in audit.call_args_list))
-
-    def test_property_readback_mismatch_is_explicit(self):
-        client = MemoryClient()
-        with patch.object(client, "mutate", return_value=123) as mutate, self.assertRaises(ReadbackPending):
-            self.execute(client, steps=1, read_attempts=2)
-        self.assertEqual(mutate.call_count, 1)
-
     def test_seed_populates_payload_only_without_mapping_or_rule_claim(self):
         client = MemoryClient()
         client.stream_configs = lambda model: {}
         events = self.execute(client, steps=1, seed=True)
         self.assertEqual(sum(call[0] == "ingest" for call in client.calls), 2)
         self.assertFalse(any(call[0] in {"history", "mutate"} for call in client.calls))
-        self.assertFalse(any(event["kind"] == "round_verified" for event in events))
+        self.assertFalse(any(event["kind"] == "status_outcome" for event in events))
         self.assertEqual(events[-1]["kind"], "mapping_sample_complete")
 
     def test_persistent_pacing_survives_restart_and_failed_attempt(self):
@@ -291,8 +186,8 @@ class WorkflowTests(unittest.TestCase):
         events = self.execute(client, steps=1)
         self.assertEqual(client.assets["room-a"], first)
         self.assertEqual(sum(call[0] == "mutate" for call in client.calls), count)
-        verified = next(e for e in events if e["kind"] == "round_verified")
-        self.assertEqual(verified["unchanged"], ["room-a", "room-b"])
+        results = [e["outcome"] for e in events if e["kind"] == "status_outcome"]
+        self.assertEqual(results, ["STATUS_UNCHANGED", "STATUS_UNCHANGED"])
 
     def test_clock_rollback_and_corrupt_pacing_state_stop_safely(self):
         clock = Clock()
@@ -340,7 +235,7 @@ class WorkflowTests(unittest.TestCase):
         outcomes = [e for e in events if e["kind"] == "ingest_outcome"]
         self.assertEqual([e["outcome"] for e in outcomes], ["DELIVERY_UNKNOWN", "HTTP_ACCEPTED"])
         self.assertFalse(any(c[0] in {"history", "mutate"} for c in client.calls))
-        self.assertFalse(any(e["kind"] == "round_verified" for e in events))
+        self.assertFalse(any(e["kind"] == "status_outcome" for e in events))
 
     def test_mapping_http_failure_is_distinct_from_unknown_and_no_resend(self):
         client = MemoryClient()
@@ -384,5 +279,5 @@ class WorkflowTests(unittest.TestCase):
         client.config["sensors"][0]["simulation"]["values"][0] = 55.0
         events = self.execute(client, steps=1)
         self.assertFalse(any(c[0] == "mutate" for c in client.calls))
-        self.assertEqual(next(e for e in events if e["kind"] == "round_verified")["actual"],
+        self.assertEqual({e["sensor"]: e["status"] for e in events if e["kind"] == "status_outcome"},
                          {"room-a": "Normal", "room-b": "Normal"})

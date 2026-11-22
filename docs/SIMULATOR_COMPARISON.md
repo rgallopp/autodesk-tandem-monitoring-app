@@ -30,7 +30,7 @@ MIT adaptations remain attributed separately in [NOTICE](../NOTICE.md).
 | Authentication/requests | Caller supplies Authorization; fetch has no explicit abort deadline or overlap guard | Basic ingestion credentials separated from endpoints; APS Bearer for reads/status writes; explicit scopes, bounded timeouts, no redirects or write retries |
 | Intervals | Immediate call then setInterval; TIMEOUT=5 means five minutes; nonpositive means no periodic sends | At least 60 real seconds per connection with persistent attempt/completion pacing and same-checkout lock |
 | Timestamps | No reserved event timestamp | No timestamp field posted; actual Tandem ingestion timestamps used in reads, evidence and charts; scenario rounds remain local |
-| Errors/evidence | Throws on 403, warns on other non-200, logs count; no retained-data readback | Sanitized HTTP/unknown outcomes and UTC send bounds; mapping setup makes no retention claim; pilot requires measurement and property readback |
+| Errors/evidence | Throws on 403, warns on other non-200, logs count; no retained-data readback | Sanitized HTTP/unknown outcomes and UTC send bounds; students confirm retention and stored room properties with a separate Tandem read |
 
 Source settings are examples, not service requirements. A stream count does not prove retention. TIMEOUT denotes sending cadence, not a network deadline.
 
@@ -39,13 +39,11 @@ Source settings are examples, not service requirements. A stream count does not 
 | Requirement | Autodesk simulator coverage | Current project |
 |---|---|---|
 | Two sensors / separate room connections | Multiple IDs; no association validation | Distinct Individual connections; explicit room identity, Host and Rooms checks |
-| Deterministic normal / elevated / repeated / recovery | Random variation only | Configured eight-round sequence; A High 2?4, recovery 5; B always Normal |
+| Deterministic normal / elevated / repeated / recovery | Random variation only | Configured eight-round sequence; A High 2-4, recovery 5; B always Normal |
 | Model targets and dB representation | No room-target rule | Fresh Noise Target read, matching Sound Pressure Level / Decibels metadata, one-decimal direct numeric dB |
-| Status writeback | Generated stream status is not a model rule result | Restricted Text Normal/High; initialize empty; mutate only changes; property readback |
+| Status writeback | Generated stream status is not a model rule result | Restricted Text Normal/High; initialize empty; mutate only changes; inspect saved status separately |
 | At least 60 seconds pacing | Five-minute setting exceeds minimum; no restart state | One-minute minimum enforced across restarts in this checkout |
 | Read stored Tandem data for a decision | Absent | API-only Streamlit readings/targets/status/history; campus support staff decide whether to visit |
-
-The final owner-approved simplification uses three Element parameters and numbered rounds. It no longer uses a separate synthetic clock or transition-time property. This source comparison does not add those earlier requirements back to the active workflow.
 
 ## Decisions and concrete simplifications
 
@@ -55,7 +53,7 @@ Keep the one-minute pilot cadence. Autodesk's five-minute example is not a requi
 
 Post only numeric noise_db. Upstream arbitrary string selections are sample data, not a substitute for this restricted Text room property. [Official ingestion guidance](https://aps.autodesk.com/blog/adding-iot-sensors-tandem-api) describes numeric ingestion and a one-minute minimum. The Python property example supports typed model mutation and skipping unchanged values.
 
-For initial field detection, separate the mapping sample from the verified pilot. Missing saved mappings must not prevent sending a single bootstrap sample; identity, room, class, target and unit checks remain mandatory. HTTP acceptance alone is not proof of retained Noise Level.
+For initial field detection, separate the mapping sample from the pilot. Missing saved mappings must not prevent sending a single bootstrap sample; identity, room, class, target and unit checks remain mandatory. HTTP acceptance alone is not proof of retained Noise Level.
 
 The upstream README's Streams ? Import/Export Connections CSV fullId can assist discovery if available, but it does not select rooms, provide target/status IDs or verify associations. Keep exports private.
 

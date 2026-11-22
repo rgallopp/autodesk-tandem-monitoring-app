@@ -19,7 +19,7 @@ Save and apply the facility template. Check the actual schema in each owning mod
 | Noise_ComputerLabA_109 | 23.60.10.00 | Computer Lab A 109 | Computer Lab A 109 | noise_db ? Noise Level |
 | Noise_ComputerLabB_210 | 23.60.10.00 | Computer Lab B 210 | Computer Lab B 210 | noise_db ? Noise Level |
 
-The final supplied facility already has the template, classifications, room targets and both connections. Both statuses are empty. Both source mappings have since been saved and passed read-only inspection. The earlier mapping samples returned HTTP 404, and a later history read found no retained Noise Level for room-a. Live retention still needs the separate bounded pilot checkpoint. For a new setup, first supply the two new Copy Link destinations privately so authorized initial samples can expose `noise_db`. Never substitute AHU/VAV destinations.
+For a new setup, supply the Individual Copy Links privately and follow the [mapping setup](LIVE_HANDOFF.md#mapping-setup-stage) if you need initial samples to expose `noise_db`. Use the links for the two lab noise connections. The [live handoff](LIVE_HANDOFF.md) records the supplied facility's setup and initial pilot evidence.
 
 ## Private configuration and access
 
@@ -35,7 +35,7 @@ The final supplied facility already has the template, classifications, room targ
 | asset.number_parameter / comments_parameter | Source Number / Comments IDs in the room schema |
 | Expected names/numbers/Comments and classifications | The actual selected rooms/connections, checked against the intended reference |
 
-APS reads use `data:read`. The later pilot uses `data:read data:write` **and facility Edit access** for that app. Scopes alone do not grant facility access. The latest configured live preflight reports `accessLevel` **Manage**, which permits the later status-writeback stage. An earlier discovery reported Read. If access returns to Read, open **Tandem ? facility ? Users ? Services ? select the existing APS app identified by local APS_CLIENT_ID ? change Read to Edit ? Save**. Read access is enough for the preflight reads accompanying mapping samples; those samples authenticate separately using each secret ingestion URL.
+APS reads use `data:read`. Manual sends, the guided demo, and the command-line pilot use `data:read data:write` and require **facility Edit access** for the APS app. In Tandem, open the facility's **Users**, then **Services**, select the app identified by your local `APS_CLIENT_ID`, change **Read** to **Edit**, and save. The read-only `monitoring inspect` command reports whether status writeback is allowed. Mapping samples use read access for model checks and authenticate separately to the Individual connections.
 
 Discovery retrieves model URNs, element/connection keys, source/custom parameter IDs, metadata, properties and saved relationships. It does not choose the intended room, create the template, assign classifications, set targets, issue ingestion secrets or save source mappings. The facility owner makes those selections in Tandem. Names are not unique identifiers; check all relationships and owning models before using discovered keys.
 
