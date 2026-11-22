@@ -102,20 +102,21 @@ Capture a fresh Tandem API read and a Streamlit screenshot at each checkpoint. I
 
 ## Public file map
 
-| File(s) | Purpose |
+| File(s) | What you'll find |
 |---|---|
-| `app.py` | Streamlit decision support and simulator controls |
-| `monitoring/__init__.py`, `__main__.py` | Package and CLI preview/discover/inspect/seed/pilot/read |
-| `monitoring/config.py`, `api.py` | Private configuration, credential separation, identity validation and bounded API requests |
-| `monitoring/simulation.py`, `rules.py` | Deterministic numbered rounds and strict target comparison |
-| `monitoring/workflow.py`, `dashboard.py`, `presentation.py`, `execution.py`, `simulator_ui.py` | Pacing, connection checks, status writeback and API-only presentation |
-| `config/project.example.json`, `.env.example` | Public placeholders; never real secrets |
-| `scripts/setup_environment.py`, `reference_expectations.py` | Environment bootstrap and generated offline reference table |
-| `tests/__init__.py`, `support.py`, `test_core.py`, `test_api.py`, `test_workflow.py`, `test_app.py`, `test_execution.py`, `test_simulator_ui.py` | HTTP blocking, invented fixtures, unit/integration/UI evidence |
-| `requirements.txt`, `requirements-lock.txt` | Existing dependencies and reproducible versions |
-| `docs/MODEL_SETUP.md`, `LIVE_HANDOFF.md`, `REFERENCE_PILOT.md` | Setup, staged live commands and expected reference results |
-| `docs/API_NOTES.md`, `SIMULATOR_COMPARISON.md` | Protocol references and pinned Autodesk source comparison |
-| `docs/REVIEW.md`, `VERIFICATION.md` | Scope, limitations and evidence boundaries |
-| `NOTICE.md`, `LICENSE`, `.gitignore` | Origins, retained license and private-file exclusions |
+| `scripts/setup_environment.py`, `requirements.txt`, `requirements-lock.txt` | Run the setup script to create `.venv`. The requirements files list the packages, and setup uses the locked versions. |
+| `config/project.example.json`, `.env.example` | Copy these templates to `config/project.json` and `.env`. Fill in your facility, rooms, and connections in the JSON file. Keep credentials and ingestion links in `.env`. |
+| [`docs/MODEL_SETUP.md`](docs/MODEL_SETUP.md) | Set up the two connections, three properties, and access in Tandem. |
+| [`app.py`](app.py) | Start here to open Streamlit. The app shows Tandem readings and room statuses and includes the manual and guided simulator controls. |
+| [`docs/VERIFICATION.md`](docs/VERIFICATION.md) | Check what Tandem stored with the readback command, then compare it with the refreshed Streamlit dashboard. |
+| `monitoring/__init__.py`, `monitoring/__main__.py` | These files make `python -m monitoring` available. The commands include `preview` for offline sample readings, `discover` and `inspect` for setup checks, `seed` and `pilot` for sending, and `read` for stored results. |
+| `monitoring/config.py`, `monitoring/api.py` | The first file loads and checks your local settings. The second sends requests to Tandem and reads its responses. |
+| `monitoring/simulation.py`, `monitoring/rules.py` | The simulator prepares the preset readings. The rule compares a reading with its room's target. A reading above target is `High`, and a reading at or below target is `Normal`. |
+| `monitoring/simulator_ui.py`, `monitoring/execution.py`, `monitoring/workflow.py` | Follow a click on **Send readings** from the controls to the worker that runs it. The workflow checks the connections, enforces the wait between sends, sends the readings, and updates room statuses. |
+| `monitoring/dashboard.py`, `monitoring/presentation.py` | Follow **Refresh** from Tandem's stored readings and room properties to the cards and charts in Streamlit. |
+| `scripts/reference_expectations.py`, [`docs/REFERENCE_PILOT.md`](docs/REFERENCE_PILOT.md), [`docs/LIVE_HANDOFF.md`](docs/LIVE_HANDOFF.md) | Generate the expected round-by-round results offline, compare them with the reference table, or find the commands for the live pilot. |
+| `tests/` | Run offline checks for the rule, API client, send workflow, and Streamlit screens. The tests use sample data and block real HTTP requests. |
+| [`docs/API_NOTES.md`](docs/API_NOTES.md), [`docs/SIMULATOR_COMPARISON.md`](docs/SIMULATOR_COMPARISON.md), [`docs/REVIEW.md`](docs/REVIEW.md) | Look up Tandem request details, compare this simulator with Autodesk's examples, or see the limits of what the tests and live checks establish. |
+| [`NOTICE.md`](NOTICE.md), [`LICENSE`](LICENSE), `.gitignore` | Find the project credits and license, and see which local files Git ignores. |
 
-Ignored `outputs/` holds local discovery, preserved snapshots and audits; `.state/` holds the sender lock and persistent per-connection pacing. Never publish these or the private configuration. See [origins](NOTICE.md) for sibling adaptations, Autodesk references and new implementation work.
+Keep `outputs/` and `.state/` local. The first holds discovery results and run logs. The second records the last send attempt for each connection and holds the lock that prevents overlapping sends from this checkout.
