@@ -8,7 +8,7 @@ All three custom parameters use **Element context**.
 
 | Parameter | Purpose | Data type | Unit / storage | Template assignment |
 |---|---|---|---|---|
-| Noise Level | Incoming measured value on each connection | Number | Sound Pressure Level ? Decibels ? dB; precision 1; direct numeric dB | OmniClass 23.60.10.00 General Measuring Instruments |
+| Noise Level | Incoming measured value on each connection | Number | Sound Pressure Level → Decibels → dB; precision 1; direct numeric dB | OmniClass 23.60.10.00 General Measuring Instruments |
 | Noise Target | Per-room threshold read when evaluating | Number | Same specification/unit/precision; 55.0 for 109 and 50.0 for 210 | OmniClass 13.53 Laboratory Spaces; value saved on room |
 | Noise Status | Stored rule result | Restricted Text | Exact case-sensitive values Normal and High; empty until evaluated | OmniClass 13.53 Laboratory Spaces; written on room |
 
@@ -16,8 +16,8 @@ Save and apply the facility template. Check the actual schema in each owning mod
 
 | Individual connection | Classification | Host | Rooms relationship | Pending source mapping |
 |---|---|---|---|---|
-| Noise_ComputerLabA_109 | 23.60.10.00 | Computer Lab A 109 | Computer Lab A 109 | noise_db ? Noise Level |
-| Noise_ComputerLabB_210 | 23.60.10.00 | Computer Lab B 210 | Computer Lab B 210 | noise_db ? Noise Level |
+| Noise_ComputerLabA_109 | 23.60.10.00 | Computer Lab A 109 | Computer Lab A 109 | noise_db → Noise Level |
+| Noise_ComputerLabB_210 | 23.60.10.00 | Computer Lab B 210 | Computer Lab B 210 | noise_db → Noise Level |
 
 For a new setup, supply the Individual Copy Links privately and follow the [mapping setup](LIVE_HANDOFF.md#mapping-setup-stage) if you need initial samples to expose `noise_db`. Use the links for the two lab noise connections. The [live handoff](LIVE_HANDOFF.md) records the supplied facility's setup and initial pilot evidence.
 

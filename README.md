@@ -1,6 +1,6 @@
 # Autodesk Tandem monitoring tutorial
 
-Build a small decision-support loop: **measurements ? Tandem ? model-target rule ? room status writeback ? Streamlit**.
+Build a small decision-support loop: **measurements → Tandem → model-target rule → room status writeback → Streamlit**.
 
 The worked example is **Computer Lab Noise Monitoring**. Campus support staff use repeated elevated readings to decide whether to visit. Computer Lab A 109 supports collaborative BIM work; Computer Lab B 210 supports quiet individual BIM work. These uses are documented in the rooms' Revit Comments. A sound reading cannot identify its source, establish occupancy, or tell staff whom to approach.
 
@@ -65,9 +65,9 @@ Select **Try your own readings**. At each checkpoint, enter the pair below and c
 
 | Checkpoint | Lab 109 reading / expected at 55.0 dB | Lab 210 reading / expected at 50.0 dB |
 |---|---|---|
-| Before the event | 45.0 dB / Normal | 40.0 dB / Normal |
-| During the event | 60.0 dB / High | 50.0 dB / Normal |
-| After recovery | 43.7 dB / Normal | 45.7 dB / Normal |
+| Round 1 — Normal readings | 45.0 dB / Normal | 40.0 dB / Normal |
+| Round 2 — Trigger a status change | 60.0 dB / High | 50.0 dB / Normal |
+| Round 3 — Return to normal | 43.7 dB / Normal | 45.7 dB / Normal |
 
 Click **Send readings** once per row. Each lab reports acceptance or a send problem, plus the status outcome for accepted readings. When delivery is uncertain, that lab's status is left as it was. Check Tandem readback before deciding whether to send again. Capture both labs at each checkpoint with the [evidence walkthrough](docs/VERIFICATION.md#assignment-evidence-from-tandem-and-streamlit). The single cooldown countdown clears and the button re-enables automatically when ready for the next pair.
 

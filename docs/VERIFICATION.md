@@ -15,6 +15,12 @@ These commands are offline. The test package blocks actual HTTP; all API values/
 
 Use the same facility and connections throughout the run. Start with [model setup](MODEL_SETUP.md). Three [manual sends](../README.md#part-b--try-your-own-readings) are sufficient. The [guided demo](../README.md#run-the-guided-demo) is the eight-round worked example.
 
+For manual evidence, label each readback and screenshot with its Canvas round:
+
+- Round 1 — Normal readings
+- Round 2 — Trigger a status change
+- Round 3 — Return to normal
+
 At each checkpoint, record the submitted dB values and collect one API readback and one refreshed app screenshot, each covering both labs:
 
 1. **Tandem API readback.** Run the read-only command below in a second PowerShell terminal. Save its output privately for that checkpoint. Check the `connection` and `room` for both labs in `cards`, then match `measurement` and `ingested_utc` to the latest submission using `trends` and the real UTC request window in the private `outputs/ui-run-*.jsonl` audit. Verify `stored_status` on each room and compare it with the submitted value and Tandem's `target`. If a reading is still processing, repeat the read without sending another sample. If a later round has already changed the room status, its current status cannot establish what was stored at the earlier checkpoint.
